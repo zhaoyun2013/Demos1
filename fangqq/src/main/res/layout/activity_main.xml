@@ -40,10 +40,16 @@
                 android:layout_centerHorizontal="true"
                 android:text="Header" />
         </RelativeLayout>
-        <ListView
-            android:id="@+id/lv_main"
+        <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/swipRefresh"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            />
+            android:padding="10dp">
+            <ListView
+                android:id="@+id/lv_main"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                />
+        </android.support.v4.widget.SwipeRefreshLayout>
     </com.zhaoyun.fangqq.drag.MyLinearLayout>
 </com.zhaoyun.fangqq.drag.DragLayout>
