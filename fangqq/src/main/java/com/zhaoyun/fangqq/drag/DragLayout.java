@@ -3,316 +3,517 @@ package com.zhaoyun.fangqq.drag;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
+import android.support.v4.view.GestureDetectorCompat;
+import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.ViewDragHelper;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
-import com.nineoldandroids.animation.TypeEvaluator;
+import com.zhaoyun.fangqq.swipe.SwipeListAdapter;
 import com.nineoldandroids.view.ViewHelper;
 
-/**
- * Created by zhaoyun on 17-3-13.
- */
-
 public class DragLayout extends FrameLayout {
-    public static final String TAG = DragLayout.class.getSimpleName();
-    private ViewDragHelper mViewDragHelper;
-    private ViewGroup mLeftContent;
-    private ViewGroup mMainContent;
-    private int mWidth;
-    private int mHeight;
-    private int mRange;
-    private OnDragStatusChangeListener mListener;
-    public Status getStatus() {
-        return mStatus;
-    }
 
-    public void setStatus(Status mStatus) {
-        this.mStatus = mStatus;
-    }
+	private static final String TAG = "TAG";
+	private View mLeftContent;
+	private View mMainContent;
+	private View mRightContent;
+	private int mWidth;
+	private int mHeight;
+	private int mRangeLeft;
+	private ViewDragHelper mDragHelper;
+	private Status mStatus = Status.Close;
+	private Direction mDirction = Direction.Left;
+	private OnDragListener mDragListener;
+	private boolean mScaleEnable = true;
+	private int mRightWidth;
+	private int mRangeRight;
+	
+	public interface OnDragListener {
+		void onClose();
+		
+		void onStartOpen(Direction direction);
+		
+		void onOpen();
+		
+		void onDrag(float percent);
+	}
+	
+	public static enum Status {
+		Open, Close, Draging
+	}
 
-    private Status mStatus = Status.Close;
-    public enum Status{
-        Open,Close,Draging;
-    }
+	public static enum Direction {
+		Left, Right, Default
+	}
+	
+	public Direction getDirction() {
+		return mDirction;
+	}
 
-    public interface OnDragStatusChangeListener{
-        void onClose();
-        void onOpen();
-        void onDraging(float percent);
-    }
+	public void setDirction(Direction dirction) {
+		mDirction = dirction;
+	}
 
-    public void setDragStatusListener(OnDragStatusChangeListener mListener){
-        this.mListener = mListener;
-    }
+	public DragLayout(Context context) {
+		this(context, null);
+	}
 
-    public DragLayout(Context context) {
-        this(context,null);
-    }
+	public DragLayout(Context context, AttributeSet attrs) {
+		this(context, attrs, 0);
+	}
 
-    public DragLayout(Context context, AttributeSet attrs) {
-        this(context, attrs, 0);
-    }
+	public DragLayout(Context context, AttributeSet attrs, int defStyle) {
+		super(context, attrs, defStyle);
 
-    public DragLayout(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        //1.创建draghelper对象
-        mViewDragHelper = ViewDragHelper.create(this, callback);
-    }
+		mDragHelper = ViewDragHelper.create(this, mCallBack);
+		mGestureDetector = new GestureDetectorCompat(context, mYGestureListener);
+	}
 
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        //2.将拦截事件交给draghelper处理
-        return mViewDragHelper.shouldInterceptTouchEvent(ev);
-    }
+	SimpleOnGestureListener mYGestureListener = new SimpleOnGestureListener() {
+		public boolean onScroll(MotionEvent e1, MotionEvent e2,
+				float distanceX, float distanceY) {
+			return Math.abs(distanceX) >= Math.abs(distanceY);
+		};
+	};
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        try{
-            //3.将触摸事件交给draghelper处理，并消费事件
-            mViewDragHelper.processTouchEvent(event);
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return true;
-    }
+	@Override
+	protected void onFinishInflate() {
+		Log.i(TAG, "--onFinishInflate");
+		mLeftContent = (View) getChildAt(0);
+//		mRightContent = getChildAt(1);
+		mMainContent = (View) getChildAt(1);
 
-    @Override
-    protected void onFinishInflate() {
-        super.onFinishInflate();
-        //4.在界面填充完成后，获取左右布局对象
-        if(getChildCount() < 2){
-            throw new IllegalStateException("至少包含两个ViewGroup.");
-        }
-        if(!(getChildAt(0) instanceof ViewGroup && getChildAt(1) instanceof ViewGroup)){
-            throw new IllegalArgumentException("子类必须为ViewGroup的实现类");
-        }
-        mLeftContent = (ViewGroup) getChildAt(0);
-        mMainContent = (ViewGroup) getChildAt(1);
+	}
 
-    }
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		super.onSizeChanged(w, h, oldw, oldh);
+		Log.i(TAG, "--onSizeChanged");
+		
+		mWidth = mMainContent.getMeasuredWidth();
+		mHeight = mMainContent.getMeasuredHeight();
+		
+		mRightWidth = 0;//mRightContent.getMeasuredWidth();
+		mRangeLeft = (int) (mWidth * 0.6f);
+		mRangeRight = mRightWidth;
+	}
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-        //5.计算宽高
-        mWidth = getMeasuredWidth();
-        mHeight = getMeasuredHeight();
-        //6.设置偏移范围
-        mRange = (int) (mWidth * 0.7f);
-    }
+	private int mMainLeft = 0;
 
-    private ViewDragHelper.Callback callback = new ViewDragHelper.Callback() {
+	ViewDragHelper.Callback mCallBack = new ViewDragHelper.Callback() {
 
-        @Override
-        public boolean tryCaptureView(View child, int pointerId) {
-            //根据返回结果决定当前child是否可以拖拽,true可拖拽
-            return true;
-        }
+		@Override
+		public boolean tryCaptureView(View child, int pointerId) {
+			// 1. 决定当前被拖拽的child是否拖的动。(抽象方法，必须重写)
+			Log.d(TAG, "tryCaptureView: " + (child == mMainContent) + " : "
+					+ (child == mLeftContent) + " : "
+					+ (child == mRightContent));
+			return true;
+		}
 
-        //在真正发生偏移之前调用，此方法执行时，还没有偏移，先返回将要偏移的值。
-        @Override
-        public int clampViewPositionHorizontal(View child, int left, int dx) {
-            //9.在将要偏移前修改右布局偏移的值
-            if(mMainContent == child){
-                left = fixLeft(left);
-            }
-            return left;
-        }
-        @Override
-        public int getViewHorizontalDragRange(View child) {
-            // 返回拖拽的范围, 不对拖拽进行真正的限制. 仅仅决定了动画执行速度
-            //此方法必须重写，不然内嵌的listview或有事件冲突
-            return mRange;
-        }
+		@Override
+		public int getViewHorizontalDragRange(View child) {
+			// 2. 决定拖拽的范围
+			return mWidth;
+		}
 
-        @Override
-        public void onViewPositionChanged(View changedView, int left, int top, int dx, int dy) {
-            Log.d(TAG, "onViewPositionChanged: left:"+left+" dx:"+dx);
-            //7.在移动左布局时，将偏移量传递给右布局，让右布局移动，左布局保持不动
-            int newLeft = left;
-            if(changedView == mLeftContent){
-                newLeft = mMainContent.getLeft() + dx;
-                //8.计算偏移量
-                newLeft = fixLeft(newLeft);
+		@Override
+		public int clampViewPositionHorizontal(View child, int left, int dx) {
+			// 3. 决定拖动时的位置，可在这里进行位置修正。（若想在此方向拖动，必须重写，因为默认返回0）
 
-                mLeftContent.layout(0, 0, mWidth, mHeight);
-                mMainContent.layout(newLeft, 0, newLeft + mWidth, 0 + mHeight);
+			Log.d(TAG, "clampViewPositionHorizontal left: " + left + " dx: "
+					+ dx + " mRange: " + mRangeLeft);
 
+			return clampResult(mMainLeft + dx, left);
+		}
 
-            }
+		@Override
+		public void onViewPositionChanged(View changedView, int left, int top,
+				int dx, int dy) {
+			// 4. 决定了当View被拖动时，希望同时引发的其他变化
+			Log.d(TAG, "onViewPositionChanged left: " + left + " dx: " + dx);
 
-            //14.分发事件，更新状态
-            dispatchDragEvent(newLeft);
-            // 为了兼容低版本, 每次修改值之后, 进行重绘
-            invalidate();
-        }
+			if (changedView == mMainContent) {
+				mMainLeft = left;
+			} else {
+				mMainLeft += dx;
+			}
 
-        protected void dispatchDragEvent(int newLeft) {
-            float percent = newLeft * 1.0f/ mRange;
-            //0.0f -> 1.0f
-            Log.d(TAG, "percent: " + percent);
+			mMainLeft = clampResult(mMainLeft, mMainLeft);
+			
+			if(changedView == mLeftContent || changedView == mRightContent){
+				layoutContent();
+			}
+			
+			dispathDragEvent(mMainLeft);
+			invalidate();
+		};
 
-            if(mListener != null){
-                mListener.onDraging(percent);
-            }
+		/**
+		 * @param releasedChild
+		 *            被释放的孩子
+		 * @param xvel
+		 *            释放时X方向的速度
+		 * @param yvel
+		 *            释放时Y方向的速度
+		 */
+		@Override
+		public void onViewReleased(View releasedChild, float xvel, float yvel) {
+			// 5. 决定当childView被释放时，希望做的事情——执行打开/关闭动画，更新状态
 
-            // 更新状态, 执行回调
-            Status preStatus = mStatus;
-            mStatus = updateStatus(percent);
-            if(mStatus != preStatus){
-                // 状态发生变化
-                if(mStatus == Status.Close){
-                    // 当前变为关闭状态
-                    if(mListener != null){
-                        mListener.onClose();
-                    }
-                }else if (mStatus == Status.Open) {
-                    if(mListener != null){
-                        mListener.onOpen();
-                    }
-                }
-            }
-            animViews(newLeft);
-        }
+			boolean scrollRight = xvel > 1.0f;
+			boolean scrollLeft = xvel < -1.0f;
+			if (scrollRight || scrollLeft) {
+				if (scrollRight && mDirction == Direction.Left) {
+					open(true, mDirction);
+				} else if (scrollLeft && mDirction == Direction.Right) {
+					open(true, mDirction);
+				} else {
+					close(true);
+				}
+				return;
+			}
 
-        private Status updateStatus(float percent) {
-            if(percent == 0f){
-                return Status.Close;
-            }else if (percent == 1.0f) {
-                return Status.Open;
-            }
-            return Status.Draging;
-        }
+			if (releasedChild == mLeftContent && mMainLeft > mRangeLeft * 0.7f) {
+				open(true, mDirction);
+			} else if (releasedChild == mMainContent) {
+				if (mMainLeft > mRangeLeft * 0.3f)
+					open(true, mDirction);
+				else if (-mMainLeft > mRangeRight * 0.3f)
+					open(true, mDirction);
+				else
+					close(true);
+			} else if (releasedChild == mRightContent
+					&& -mMainLeft > mRangeRight * 0.7f) {
+				open(true, mDirction);
+			} else {
+				close(true);
+			}
+		}
 
-        /**
-         * 当手指抬起释放时,被调用
-         * @param releasedChild
-         * @param xvel 水平方向速度，向右为正
-         * @param yvel 竖直方向速度，向下为正
-         */
-        @Override
-        public void onViewReleased(View releasedChild, float xvel, float yvel) {
-            super.onViewReleased(releasedChild, xvel, yvel);
-            //10.实现自动完成打开（关闭）过程
-            if(xvel == 0 && mMainContent.getLeft() > mRange / 2){
-                open(true);
-            }else if(xvel > 0){
-                open(true);
-            }else{
-                close(true);
-            }
-        }
+		@Override
+		public void onViewDragStateChanged(int state) {
+			if (mStatus == Status.Close && state == ViewDragHelper.STATE_IDLE
+					&& mDirction == Direction.Right) {
+				mDirction = Direction.Left;
+			}
+		}
 
+		@Override
+		public void onViewCaptured(View capturedChild, int activePointerId) {
+		};
 
-    };
+	};
 
-    private void open(boolean isSmooth) {
-        int finalLeft = mRange;
-        if(isSmooth){
-            //11.平滑移动
-            if(mViewDragHelper.smoothSlideViewTo(mMainContent,finalLeft,0)){
-                //12.异步重绘动画
-                ViewCompat.postInvalidateOnAnimation(this);
-            }
-        }else{
-            mMainContent.layout(finalLeft, 0, finalLeft + mWidth, 0 + mHeight);
-        }
-    }
+	private int clampResult(int tempValue, int defaultValue) {
+		Integer minLeft = null;
+		Integer maxLeft = null;
 
-    @Override
-    public void computeScroll() {
-        super.computeScroll();
-        //13.持续平滑动画 (高频率调用)
-        if(mViewDragHelper.continueSettling(true)){
-            //如果返回true, 动画还需要继续执行
-            ViewCompat.postInvalidateOnAnimation(this);
-        }
-    }
+		if (mDirction == Direction.Left) {
+			minLeft = 0;
+			maxLeft = 0 + mRangeLeft;
+		} else if (mDirction == Direction.Right) {
+			minLeft = 0 - mRangeRight;
+			maxLeft = 0;
+		}
 
-    private void close(boolean isSmooth) {
-        int finalLeft = 0;
-        if(isSmooth){
-            // 1. 触发一个平滑动画
-            if(mViewDragHelper.smoothSlideViewTo(mMainContent, finalLeft, 0)){
-                // 返回true代表还没有移动到指定位置, 需要刷新界面.
-                // 参数传this(child所在的ViewGroup)
-                ViewCompat.postInvalidateOnAnimation(this);
-            }
-        }else {
-            mMainContent.layout(finalLeft, 0, finalLeft + mWidth, 0 + mHeight);
-        }
-    }
+		if (minLeft != null && tempValue < minLeft)
+			return minLeft;
+		else if (maxLeft != null && tempValue > maxLeft)
+			return maxLeft;
+		else
+			return defaultValue;
+	}
 
-    public void close(){
-        close(true);
-    }
+	private GestureDetectorCompat mGestureDetector;
 
-    private void animViews(int newLeft) {
-        float percent = newLeft * 1.0f / mRange;
-        ViewHelper.setScaleX(mMainContent, evaluate(percent,1.0f,0.8f));
-        ViewHelper.setScaleY(mMainContent,evaluate(percent,1.0f,0.8f));
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
-        ViewHelper.setScaleX(mLeftContent,evaluate(percent,0.5f,1.0f));
-        ViewHelper.setScaleY(mLeftContent,evaluate(percent,0.5f,1.0f));
+		Log.i(TAG, "--onMeasure");
+	}
+	@Override
+	protected void onLayout(boolean changed, int left, int top, int right,
+			int bottom) {
+		Log.i(TAG, "--onLayout");
+		layoutContent();
+	}
 
-        getBackground().setColorFilter((Integer) evaluateColor(percent, Color.BLUE,Color.TRANSPARENT), PorterDuff.Mode.SRC_OVER);
-    }
+	private void layoutContent() {
+		mLeftContent.layout(0, 0, mWidth, mHeight);
+		if(mRightContent != null) {
+			mRightContent.layout(mWidth - mRightWidth, 0, mWidth, mHeight);
+		}
+		mMainContent.layout(mMainLeft, 0, mMainLeft + mWidth, mHeight);
+	}
 
-    /**
-     * 计算向左偏移的值，不超过mRange范围，不小于0
-     * @param left
-     * @return
-     */
-    private int fixLeft(int left) {
-        if(left > mRange){
-            left = mRange;
-        }else if(left < 0){
-            left = 0;
-        }
-        return left;
-    }
+	@Override
+	public void computeScroll() {
 
-    /**
-     * 估值器，计算百分比对应两个数字之间的那个数字
-     * @param fraction
-     * @param startValue
-     * @param endValue
-     * @return
-     */
-    public Float evaluate(float fraction, Number startValue, Number endValue) {
-        float startFloat = startValue.floatValue();
-        return startFloat + fraction * (endValue.floatValue() - startFloat);
-    }
+		if (mDragHelper.continueSettling(true)) {
+			ViewCompat.postInvalidateOnAnimation(this);
+		}
+	}
 
-    /**
-     * 估值器，计算百分比对应两个颜色之间的颜色
-     * @param fraction
-     * @param startValue
-     * @param endValue
-     * @return
-     */
-    public Object evaluateColor(float fraction, Object startValue, Object endValue) {
-        int startInt = (Integer) startValue;
-        int startA = (startInt >> 24);
-        int startR = (startInt >> 16) & 0xff;
-        int startG = (startInt >> 8) & 0xff;
-        int startB = startInt & 0xff;
+	public void setDragListener(OnDragListener mDragListener) {
+		this.mDragListener = mDragListener;
+	}
 
-        int endInt = (Integer) endValue;
-        int endA = (endInt >> 24);
-        int endR = (endInt >> 16) & 0xff;
-        int endG = (endInt >> 8) & 0xff;
-        int endB = endInt & 0xff;
+	/**
+	 * 处理其他同步动画
+	 * 
+	 * @param mainLeft
+	 */
+	protected void dispathDragEvent(int mainLeft) {
+		// 注意转换成float
+		float percent = 0;
+		if (mDirction == Direction.Left)
+			percent = mainLeft / (float) mRangeLeft;
+		else if (mDirction == Direction.Right)
+			percent = Math.abs(mainLeft) / (float) mRangeRight;
 
-        return (int)((startA + (int)(fraction * (endA - startA))) << 24) |
-                (int)((startR + (int)(fraction * (endR - startR))) << 16) |
-                (int)((startG + (int)(fraction * (endG - startG))) << 8) |
-                (int)((startB + (int)(fraction * (endB - startB))));
-    }
+		if (mDragListener != null) {
+			mDragListener.onDrag(percent);
+		}
+
+		// 更新动画
+		if (mScaleEnable) {
+			animViews(percent);
+		}
+		// 更新状态
+		Status lastStatus = mStatus;
+		if (updateStatus() != lastStatus) {
+			if(lastStatus == Status.Close && mStatus == Status.Draging){
+				mLeftContent.setVisibility(mDirction == Direction.Left ? View.VISIBLE : View.GONE);
+				mRightContent.setVisibility(mDirction == Direction.Right ? View.VISIBLE : View.GONE);
+				
+				if(mDragListener != null){
+					mDragListener.onStartOpen(mDirction);
+				}
+			}
+			
+			if (mStatus == Status.Close) {
+				if (mDragListener != null)
+					mDragListener.onClose();
+			} else if (mStatus == Status.Open) {
+				if (mDragListener != null)
+					mDragListener.onOpen();
+			}
+		}
+
+	}
+
+	private Status updateStatus() {
+		if (mDirction == Direction.Left) {
+			if (mMainLeft == 0) {
+				mStatus = Status.Close;
+			} else if (mMainLeft == mRangeLeft) {
+				mStatus = Status.Open;
+			} else {
+				mStatus = Status.Draging;
+			}
+		} else if (mDirction == Direction.Right) {
+			if (mMainLeft == 0) {
+				mStatus = Status.Close;
+			} else if (mMainLeft == 0 - mRangeRight) {
+				mStatus = Status.Open;
+			} else {
+				mStatus = Status.Draging;
+			}
+		}
+		return mStatus;
+
+	}
+
+	private void animViews(float percent) {
+		Log.d(TAG, "percent: " + percent);
+		animMainView(percent);
+
+		animBackView(percent);
+	}
+
+	private void animBackView(float percent) {
+		if (mDirction == Direction.Right) {
+			// 右边栏X, Y放大，向左移动, 逐渐显示
+			ViewHelper.setScaleX(mRightContent, 0.5f + 0.5f * percent);
+			ViewHelper.setScaleY(mRightContent, 0.5f + 0.5f * percent);
+			ViewHelper.setTranslationX(mRightContent,
+					evaluate(percent, mRightWidth + mRightWidth / 2.0f, 0.0f));
+
+			ViewHelper.setAlpha(mRightContent, percent);
+		} else {
+			// 左边栏X, Y放大，向右移动, 逐渐显示
+			ViewHelper.setScaleX(mLeftContent, 0.5f + 0.5f * percent);
+			ViewHelper.setScaleY(mLeftContent, 0.5f + 0.5f * percent);
+			ViewHelper.setTranslationX(mLeftContent,
+					evaluate(percent, -mWidth / 2f, 0.0f));
+			ViewHelper.setAlpha(mLeftContent, percent);
+		}
+		// 背景逐渐变亮
+		getBackground().setColorFilter(
+				caculateValue(percent, Color.BLACK, Color.TRANSPARENT),
+				PorterDuff.Mode.SRC_OVER);
+	}
+
+	private void animMainView(float percent) {
+		Float inverseP = null;
+		if (mDirction == Direction.Left) {
+			inverseP = 1 - percent * 0.25f;
+		} else if (mDirction == Direction.Right) {
+			inverseP = 1 - percent * 0.25f;
+		}
+		// 主界面X,Y缩小
+		if (inverseP != null) {
+			if (mDirction == Direction.Right) {
+				ViewHelper.setPivotX(mMainContent, mWidth);
+				ViewHelper.setPivotY(mMainContent, mHeight / 2.0f);
+			} else {
+				ViewHelper.setPivotX(mMainContent, mWidth / 2.0f);
+				ViewHelper.setPivotY(mMainContent, mHeight / 2.0f);
+			}
+			ViewHelper.setScaleX(mMainContent, inverseP);
+			ViewHelper.setScaleY(mMainContent, inverseP);
+		}
+	}
+
+	public Float evaluate(float fraction, Number startValue, Number endValue) {
+		float startFloat = startValue.floatValue();
+		return startFloat + fraction * (endValue.floatValue() - startFloat);
+	}
+
+	private int caculateValue(float fraction, Object start, Object end) {
+		
+		int startInt = (Integer) start;
+		int startIntA = startInt >> 24 & 0xff;
+		int startIntR = startInt >> 16 & 0xff;
+		int startIntG = startInt >> 8 & 0xff;
+		int startIntB = startInt & 0xff;
+
+		int endInt = (Integer) end;
+		int endIntA = endInt >> 24 & 0xff;
+		int endIntR = endInt >> 16 & 0xff;
+		int endIntG = endInt >> 8 & 0xff;
+		int endIntB = endInt & 0xff;
+
+		return ((int) (startIntA + (endIntA - startIntA) * fraction)) << 24
+				| ((int) (startIntR + (endIntR - startIntR) * fraction)) << 16
+				| ((int) (startIntG + (endIntG - startIntG) * fraction)) << 8
+				| ((int) (startIntB + (endIntB - startIntB) * fraction));
+	}
+	
+
+    float mDownX;
+
+	private SwipeListAdapter adapter;
+
+	@Override
+	public boolean onInterceptTouchEvent(MotionEvent ev) {
+
+    	if(getStatus() == Status.Close){
+	    	int actionMasked = MotionEventCompat.getActionMasked(ev);
+	    	switch (actionMasked) {
+				case MotionEvent.ACTION_DOWN:
+					mDownX = ev.getRawX();
+					break;
+				case MotionEvent.ACTION_MOVE:
+	
+					if(adapter.getUnClosedCount() > 0){
+						return false;
+					}
+					
+					float delta = ev.getRawX() - mDownX;
+					if(delta < 0){
+						return false;
+					}
+					break;
+				default:
+					mDownX = 0;
+					break;
+			}
+    	}
+
+		return mDragHelper.shouldInterceptTouchEvent(ev)
+				& mGestureDetector.onTouchEvent(ev);
+	}
+	public void close(){
+		close(true);
+	}
+	public void close(boolean withAnim) {
+
+		mMainLeft = 0;
+		if (withAnim) {
+			if (mDragHelper.smoothSlideViewTo(mMainContent, mMainLeft, 0)) {
+				ViewCompat.postInvalidateOnAnimation(this);
+			}
+		} else {
+			layoutContent();
+			
+			dispathDragEvent(mMainLeft);
+		}
+	}
+
+	public void open(){
+		open(true);
+	}
+	
+	public void open(boolean withAnim) {
+		open(withAnim, Direction.Left);
+	}
+
+	public void open(boolean withAnim, Direction d) {
+		mDirction = d;
+
+		if (mDirction == Direction.Left)
+			mMainLeft = mRangeLeft;
+		else if (mDirction == Direction.Right)
+			mMainLeft = -mRangeRight;
+
+		if (withAnim) {
+			// 引发动画的开始
+			if (mDragHelper.smoothSlideViewTo(mMainContent, mMainLeft, 0)) {
+				// 需要在computeScroll中使用continueSettling方法才能将动画继续下去（因为ViewDragHelper使用了scroller）。
+				ViewCompat.postInvalidateOnAnimation(this);
+			}
+		} else {
+			layoutContent();
+			
+			dispathDragEvent(mMainLeft);
+		}
+	}
+
+	@Override
+	public boolean onTouchEvent(MotionEvent event) {
+
+		try {
+			mDragHelper.processTouchEvent(event);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return true;
+	}
+
+	public Status getStatus() {
+		return mStatus;
+	}
+
+	public void switchScaleEnable() {
+		this.mScaleEnable = !mScaleEnable;
+		if (!mScaleEnable) {
+			animBackView(1.0f);
+		}
+
+	}
+	
+	public void setAdapterInterface(SwipeListAdapter adapter) {
+		this.adapter = adapter;
+		
+	}
+
 }

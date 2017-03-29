@@ -17,6 +17,7 @@ import android.widget.ListView;
 
 import com.zhaoyun.fangqq.drag.DragLayout;
 import com.zhaoyun.fangqq.drag.MyLinearLayout;
+import com.zhaoyun.fangqq.swipe.SwipeListAdapter;
 
 public class MainActivity extends Activity {
 
@@ -31,6 +32,8 @@ public class MainActivity extends Activity {
         }
     };
 
+    private SwipeListAdapter adapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -43,40 +46,11 @@ public class MainActivity extends Activity {
         mLinearLayout.setDraglayout(mDragLayout);
 
         mMainList = (ListView)findViewById(R.id.lv_main);
-        mMainList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, Cheeses.NAMES));
+//        mMainList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, Cheeses.NAMES));
+        adapter = new SwipeListAdapter(MainActivity.this);
+        mMainList.setAdapter(adapter);
+        mDragLayout.setAdapterInterface(adapter);
 
-        mDragLayout.setDragStatusListener(new DragLayout.OnDragStatusChangeListener() {
-
-            @Override
-            public void onOpen() {
-//                Utils.showToast(MainActivity.this, "onOpen");
-                // 左面板ListView随机设置一个条目
-//                Random random = new Random();
-//
-//                int nextInt = random.nextInt(50);
-//                mLeftList.smoothScrollToPosition(nextInt);
-
-            }
-
-            @Override
-            public void onDraging(float percent) {
-//                Log.d(TAG, "onDraging: " + percent);// 0 -> 1
-//                // 更新图标的透明度
-//                // 1.0 -> 0.0
-//                ViewHelper.setAlpha(mHeaderImage, 1 - percent);
-            }
-
-            @Override
-            public void onClose() {
-//                Utils.showToast(MainActivity.this, "onClose");
-//                // 让图标晃动
-////				mHeaderImage.setTranslationX(translationX)
-//                ObjectAnimator mAnim = ObjectAnimator.ofFloat(mHeaderImage, "translationX", 15.0f);
-//                mAnim.setInterpolator(new CycleInterpolator(4));
-//                mAnim.setDuration(500);
-//                mAnim.start();
-            }
-        });
 
         ImageView header = (ImageView) findViewById(R.id.iv_header);
         header.setOnClickListener(new View.OnClickListener() {
