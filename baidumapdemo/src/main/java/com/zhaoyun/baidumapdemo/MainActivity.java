@@ -1,8 +1,10 @@
 package com.zhaoyun.baidumapdemo;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 
 import com.baidu.location.BDLocation;
 import com.baidu.location.BDLocationListener;
@@ -20,6 +22,7 @@ import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.OverlayOptions;
 import com.baidu.mapapi.model.LatLng;
+import com.baidu.navi.sdkdemo.BNDemoMainActivity;
 
 import java.util.List;
 
@@ -238,5 +241,9 @@ public class MainActivity extends Activity {
         super.onPause();
         //在activity执行onPause时执行mMapView. onPause ()，实现地图生命周期管理
         mMapView.onPause();
+    }
+
+    public void clickToNavi(View v){
+        startActivity(new Intent(this, BNDemoMainActivity.class));
     }
 }

@@ -2,6 +2,7 @@ package com.zhaoyun.liteormdemo;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 
 import java.util.ArrayList;
@@ -9,11 +10,15 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
+    private static final String TAG = "MainActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initData();
+        Log.d(TAG, "onCreate:"+MainActivity.class.getSimpleName());
+        ProguardTest.test();
     }
 
     private void initData() {

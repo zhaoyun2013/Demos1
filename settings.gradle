@@ -1,1 +1,1 @@
-include ':fangqq'
+include ':fangqq', ':baidumapdemo', ':liteormdemo', ':viewpage_fragment_lazyload'
