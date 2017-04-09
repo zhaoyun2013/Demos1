@@ -1,4 +1,4 @@
-package com.zhaoyun.mymvp;
+package com.zhaoyun.mymvp.login;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -9,10 +9,10 @@ import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.zhaoyun.mymvp.presenter.LoginPresenter;
-import com.zhaoyun.mymvp.view.ILoginView;
+import com.zhaoyun.mymvp.news.NewsActivity;
+import com.zhaoyun.mymvp.R;
 
-public class LoginActivity extends Activity implements ILoginView{
+public class LoginActivity extends Activity implements LoginContract.View{
 
     private EditText etUsername,etPassword;
     private Button btnLogin,btnClear;
@@ -30,53 +30,31 @@ public class LoginActivity extends Activity implements ILoginView{
         btnLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                loginPresenter.login();
+                loginPresenter.login(etUsername.getText().toString(),etPassword.getText().toString(),true);
             }
         });
         btnClear = (Button) findViewById(R.id.btnClear);
         btnClear.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                loginPresenter.clear();
+//                loginPresenter.clear();
             }
         });
     }
 
-
     @Override
-    public void showLoading() {
-        progressBar.setVisibility(View.VISIBLE);
+    public void setProgressIndicator(boolean active) {
+        if(active)
+            progressBar.setVisibility(View.VISIBLE);
+        else
+            progressBar.setVisibility(View.GONE);
     }
 
-    @Override
-    public void hideLoading() {
-        progressBar.setVisibility(View.GONE);
-    }
-
-    @Override
-    public String getUsername() {
-        return etUsername.getText().toString();
-    }
-
-    @Override
-    public String getPassword() {
-        return etPassword.getText().toString();
-    }
-
-    @Override
-    public void clearUsername() {
-        etUsername.setText("");
-    }
-
-    @Override
-    public void clearPassword() {
-        etPassword.setText("");
-    }
 
     @Override
     public void loginSuccess() {
         Toast.makeText(this,"login success.",Toast.LENGTH_SHORT).show();
-        startActivity(new Intent(this,MainActivity.class));
+        startActivity(new Intent(this,NewsActivity.class));
     }
 
     @Override

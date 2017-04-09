@@ -1,4 +1,4 @@
-package com.zhaoyun.mymvp;
+package com.zhaoyun.mymvp.news;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -13,23 +13,17 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.zhaoyun.mymvp.R;
 import com.zhaoyun.mymvp.model.News;
-import com.zhaoyun.mymvp.presenter.NewsPresenter;
-import com.zhaoyun.mymvp.view.IMainView;
-import com.zhaoyun.mymvp.volley.VolleyUtil;
-
-import org.w3c.dom.Text;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
-public class MainActivity extends Activity implements IMainView{
+public class NewsActivity extends Activity implements NewsContract.View{
 
     private ListView mList;
     private NewsAdapter mAdapter;
     private SparseArray<News> mData;
-    private NewsPresenter newsPresenter = new NewsPresenter(this);
+    private NewsContract.Presenter newsPresenter;
 
     private Button btnUpload;
     private TextView tvText;
@@ -43,9 +37,14 @@ public class MainActivity extends Activity implements IMainView{
         mList = (ListView) findViewById(R.id.list);
         mAdapter = new NewsAdapter();
         mList.setAdapter(mAdapter);
-        newsPresenter.loadData();
 
+        newsPresenter = new NewsPresenter(this);
+    }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        newsPresenter.start();
     }
 
     public void uploadFile(View v){
@@ -57,9 +56,9 @@ public class MainActivity extends Activity implements IMainView{
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode){
+        switch (requestCode) {
             case 0:
-                if(resultCode == RESULT_OK){
+                if (resultCode == RESULT_OK) {
                     File file = new File(data.getData().getPath());
                     newsPresenter.uploadFile(file);
                 }
@@ -86,7 +85,7 @@ public class MainActivity extends Activity implements IMainView{
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            convertView = LayoutInflater.from(MainActivity.this).inflate(R.layout.item_news,null);
+            convertView = LayoutInflater.from(NewsActivity.this).inflate(R.layout.item_news,null);
             TextView tvTitle = (TextView) convertView.findViewById(R.id.tvTitle);
             TextView tvDetail = (TextView) convertView.findViewById(R.id.tvDetail);
             tvTitle.setText(mData.get(position).getTitle());

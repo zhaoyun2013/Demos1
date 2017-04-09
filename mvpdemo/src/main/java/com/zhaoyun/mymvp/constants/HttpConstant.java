@@ -25,7 +25,7 @@ public class HttpConstant {
 //
 //	public final static String BASE_URL = "http://192.168.50.31/demo.json";
 
-	public final static String LIST_DEMO_URL = "http://192.168.36.117/demo.json";
-	public final static String UPLOAD_FILE_URL = "http://192.168.36.117/uploadfile.php";
+	public final static String LIST_DEMO_URL = "http://192.168.2.103/demo.json";
+	public final static String UPLOAD_FILE_URL = "http://192.168.2.103/uploadfile.php";
 }
 

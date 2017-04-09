@@ -1,4 +1,4 @@
-package com.zhaoyun.mymvp.business;
+package com.zhaoyun.mymvp.news;
 
 import android.content.Context;
 import android.util.SparseArray;
@@ -29,15 +29,26 @@ import java.util.List;
 
 public class NewsBusiness {
 
+    static SparseArray<News> cacheNews;
+
+
     public void getList(final OnLoadNewsListener onLoadNewsListener){
         VolleyUtil.getInstance(BaseApplication.getInstance()).post(HttpConstant.LIST_DEMO_URL,new HashMap<String, String>(),
              new VolleyCallBack(){
                     @Override
                     public void onSuccess(String result) {
                         try {
-                            Thread.sleep(500);
-                            SparseArray<News> list = News.readJsonDataBeans(result);
-                            onLoadNewsListener.onSuccess(list);
+                            if(cacheNews !=null && cacheNews.size()>0){
+                                cacheNews.get(0).setTitle("cache");
+                                onLoadNewsListener.onSuccess(cacheNews);
+                            }else {
+                                Thread.sleep(500);
+                                SparseArray<News> list = News.readJsonDataBeans(result);
+                                if(list !=null && list.size()>0) {
+                                    cacheNews = list;
+                                }
+                                onLoadNewsListener.onSuccess(list);
+                            }
                         }catch (Exception e){
                             e.printStackTrace();
                             onLoadNewsListener.onFailure(e.getMessage());

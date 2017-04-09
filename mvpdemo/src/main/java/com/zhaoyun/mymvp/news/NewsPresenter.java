@@ -1,22 +1,19 @@
-package com.zhaoyun.mymvp.presenter;
+package com.zhaoyun.mymvp.news;
 
 import android.util.SparseArray;
 
-import com.zhaoyun.mymvp.business.NewsBusiness;
 import com.zhaoyun.mymvp.model.News;
-import com.zhaoyun.mymvp.view.IMainView;
 
 import java.io.File;
-import java.util.List;
 
 /**
  * Created by zhaoyun on 17-3-1.
  */
 
-public class NewsPresenter{
+public class NewsPresenter implements NewsContract.Presenter{
     private NewsBusiness newsBusiness;
-    private IMainView view;
-    public NewsPresenter(IMainView view){
+    private NewsContract.View view;
+    public NewsPresenter(NewsContract.View view){
         this.view = view;
         newsBusiness = new NewsBusiness();
     }
@@ -49,5 +46,10 @@ public class NewsPresenter{
                 view.uploadFailed(str);
             }
         });
+    }
+
+    @Override
+    public void start() {
+        loadData();
     }
 }
